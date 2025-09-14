@@ -143,37 +143,48 @@ class _VisualizationPageState extends State<VisualizationPage>
   Future<void> _bubbleSortStep() async {
     if (_bubbleSortCompleted || _array.length <= 1) return;
 
-    setState(() {
-      _compareIndex1 = _bubbleSortJ;
-      _compareIndex2 = _bubbleSortJ + 1;
-    });
-
-    // Wait for comparison animation
+    // Set comparison indices only if they are valid
+    if (_bubbleSortJ + 1 < _array.length - _bubbleSortI) {
+      setState(() {
+        _compareIndex1 = _bubbleSortJ;
+        _compareIndex2 = _bubbleSortJ + 1;
+      });
+    } else {
+        // At the end of a pass, reset comparison indices
+        setState(() {
+            _compareIndex1 = -1;
+            _compareIndex2 = -1;
+        });
+    }
+    
     await Future.delayed(const Duration(milliseconds: 300));
 
-    // Check if swap is needed
-    if (_array[_bubbleSortJ] > _array[_bubbleSortJ + 1]) {
+    if (_bubbleSortJ < _array.length - 1 - _bubbleSortI) {
+      // Check if swap is needed
+      if (_array[_bubbleSortJ] > _array[_bubbleSortJ + 1]) {
+        setState(() {
+          _isSwapping = true;
+        });
+
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        // Perform swap
+        setState(() {
+          int temp = _array[_bubbleSortJ];
+          _array[_bubbleSortJ] = _array[_bubbleSortJ + 1];
+          _array[_bubbleSortJ + 1] = temp;
+          _isSwapping = false;
+        });
+
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
+      // Move to next comparison
       setState(() {
-        _isSwapping = true;
+         _bubbleSortJ++;
       });
-
-      await Future.delayed(const Duration(milliseconds: 300));
-
-      // Perform swap
+    } else {
+      // End of a pass
       setState(() {
-        int temp = _array[_bubbleSortJ];
-        _array[_bubbleSortJ] = _array[_bubbleSortJ + 1];
-        _array[_bubbleSortJ + 1] = temp;
-        _isSwapping = false;
-      });
-
-      await Future.delayed(const Duration(milliseconds: 300));
-    }
-
-    // Move to next comparison
-    setState(() {
-      _bubbleSortJ++;
-      if (_bubbleSortJ >= _array.length - 1 - _bubbleSortI) {
         _bubbleSortJ = 0;
         _bubbleSortI++;
         if (_bubbleSortI >= _array.length - 1) {
@@ -181,8 +192,8 @@ class _VisualizationPageState extends State<VisualizationPage>
           _compareIndex1 = -1;
           _compareIndex2 = -1;
         }
-      }
-    });
+      });
+    }
   }
 
   // Get color for array element based on its state
@@ -196,6 +207,16 @@ class _VisualizationPageState extends State<VisualizationPage>
     } else {
       return Colors.blue[400]!;
     }
+  }
+  
+  String _getStatusText() {
+    if (_bubbleSortCompleted) {
+      return 'Sorting Complete!';
+    }
+    if (_compareIndex1 != -1 && _compareIndex2 != -1) {
+      return 'Step $_currentStep - Comparing positions $_compareIndex1 and $_compareIndex2';
+    }
+    return 'Step $_currentStep - Pass completed';
   }
 
   @override
@@ -289,9 +310,7 @@ class _VisualizationPageState extends State<VisualizationPage>
                   ),
                 ),
                 child: Text(
-                  _bubbleSortCompleted 
-                    ? 'Sorting Complete!' 
-                    : 'Step $_currentStep - Comparing positions $_bubbleSortJ and ${_bubbleSortJ + 1}',
+                  _getStatusText(),
                   style: TextStyle(
                     color: _bubbleSortCompleted ? Colors.green[800] : Colors.blue[800],
                     fontWeight: FontWeight.w600,
@@ -315,7 +334,10 @@ class _VisualizationPageState extends State<VisualizationPage>
                             duration: const Duration(milliseconds: 300),
                             curve: Curves.easeInOut,
                             width: 60,
-                            height: _array[index] * 4.0 + 20, // Height based on value
+                            height: _array[index] * 3.5 + 40, // Adjusted height
+                            constraints: const BoxConstraints(
+                              minHeight: 50, // Ensure minimum height for text
+                            ),
                             decoration: BoxDecoration(
                               color: _getElementColor(index),
                               borderRadius: BorderRadius.circular(8),
