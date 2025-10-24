@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class AlgorithmListPage extends StatelessWidget {
-  const AlgorithmListPage({Key? key}) : super(key: key);
+  const AlgorithmListPage({super.key});
 
   // Algorithm data
   final List<Map<String, String>> algorithms = const [
@@ -42,7 +42,7 @@ class AlgorithmListPage extends StatelessWidget {
         ),
         centerTitle: true,
         elevation: 2,
-        backgroundColor: Colors.blue[600],
+        backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
       ),
       body: Padding(
@@ -80,7 +80,7 @@ class AlgorithmListPage extends StatelessWidget {
                               children: [
                                 Icon(
                                   _getAlgorithmIcon(algorithm['name']!),
-                                  color: Colors.blue[600],
+                                  color: Colors.deepPurple,
                                   size: 24,
                                 ),
                                 const SizedBox(width: 12),
@@ -121,7 +121,7 @@ class AlgorithmListPage extends StatelessWidget {
                                   style: TextStyle(fontWeight: FontWeight.w600),
                                 ),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue[600],
+                                  backgroundColor: Colors.deepPurple,
                                   foregroundColor: Colors.white,
                                   elevation: 2,
                                   padding: const EdgeInsets.symmetric(
@@ -148,7 +148,6 @@ class AlgorithmListPage extends StatelessWidget {
     );
   }
 
-  // Helper method to get appropriate icon for each algorithm
   IconData _getAlgorithmIcon(String algorithmName) {
     switch (algorithmName) {
       case 'Bubble Sort':
@@ -166,8 +165,8 @@ class AlgorithmListPage extends StatelessWidget {
     }
   }
 
-  // Navigation method to Visualization Page
   void _navigateToVisualization(BuildContext context, String algorithmName) {
-    context.go('/visualize/$algorithmName');
+    final route = algorithmName.replaceAll(' ', '_').toLowerCase();
+    context.go('/visualize/$route');
   }
 }
