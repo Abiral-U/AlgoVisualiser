@@ -1,46 +1,48 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
-class VisualizationPage extends StatefulWidget {
+class BinarySearchPage extends StatefulWidget {
   final String algorithmName;
 
-  const VisualizationPage({
-    Key? key,
-    required this.algorithmName,
-  }) : super(key: key);
+  const BinarySearchPage({super.key, required this.algorithmName});
 
   @override
-  State<VisualizationPage> createState() => _VisualizationPageState();
+  State<BinarySearchPage> createState() => _BinarySearchPageState();
 }
 
-class _VisualizationPageState extends State<VisualizationPage>
-    with TickerProviderStateMixin {
+class _BinarySearchPageState extends State<BinarySearchPage> {
   final TextEditingController _inputController = TextEditingController();
-  
+  final TextEditingController _targetController = TextEditingController();
+
   List<int> _array = [];
   List<int> _originalArray = [];
+  int _target = 0;
   bool _isPlaying = false;
+  bool _isPaused = false;
   bool _isVisualizationStarted = false;
-  
-  // Animation control
+
+  // Binary Search specific state
+  int _low = -1;
+  int _high = -1;
+  int _mid = -1;
+  int _foundIndex = -1;
+  final List<Map<String, int>> _searchHistory = [];
   int _currentStep = 0;
-  int _compareIndex1 = -1;
-  int _compareIndex2 = -1;
-  bool _isSwapping = false;
-  
-  // Bubble Sort specific state
-  int _bubbleSortI = 0;
-  int _bubbleSortJ = 0;
-  bool _bubbleSortCompleted = false;
+  bool _searchCompleted = false;
+  Timer? _visualizationTimer;
 
   @override
   void initState() {
     super.initState();
-    _inputController.text = "5,3,8,1,9,2,7";
+    _inputController.text = "1,3,5,7,9,11,13,15,17,19";
+    _targetController.text = "7";
   }
 
   @override
   void dispose() {
     _inputController.dispose();
+    _targetController.dispose();
+    _visualizationTimer?.cancel();
     super.dispose();
   }
 
@@ -50,20 +52,23 @@ class _VisualizationPageState extends State<VisualizationPage>
       return input
           .split(',')
           .map((e) => int.parse(e.trim()))
-          .where((e) => e >= 0 && e <= 100) // Limit range for visualization
+          .where((e) => e >= 0 && e <= 100)
           .toList();
     } catch (e) {
       return [];
     }
   }
 
-  // Start visualization
   void _startVisualization() {
     final parsedArray = _parseInput(_inputController.text);
-    if (parsedArray.isEmpty) {
+    final targetValue = int.tryParse(_targetController.text.trim());
+
+    if (parsedArray.isEmpty || targetValue == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter valid integers (0-100, comma-separated)'),
+          content: Text(
+            'Please enter valid integers (0-100, comma-separated) and a target number',
+          ),
           backgroundColor: Colors.red,
         ),
       );
@@ -73,150 +78,149 @@ class _VisualizationPageState extends State<VisualizationPage>
     setState(() {
       _array = List.from(parsedArray);
       _originalArray = List.from(parsedArray);
+      _array.sort(); // Ensure array is sorted for binary search
+      _target = targetValue;
       _isVisualizationStarted = true;
-      _resetVisualizationState();
+      _resetSearchState();
+      _performBinarySearch();
     });
   }
 
-  // Reset visualization state
-  void _resetVisualizationState() {
-    _currentStep = 0;
-    _compareIndex1 = -1;
-    _compareIndex2 = -1;
-    _isSwapping = false;
-    _bubbleSortI = 0;
-    _bubbleSortJ = 0;
-    _bubbleSortCompleted = false;
+  void _resetSearchState() {
     _isPlaying = false;
+    _isPaused = false;
+    _currentStep = 0;
+    _low = -1;
+    _high = -1;
+    _mid = -1;
+    _foundIndex = -1;
+    _searchCompleted = false;
+    _searchHistory.clear();
+    _visualizationTimer?.cancel();
   }
 
-  // Reset to original array
-  void _reset() {
-    setState(() {
-      if (_originalArray.isNotEmpty) {
-        _array = List.from(_originalArray);
+  void _performBinarySearch() {
+    int low = 0;
+    int high = _array.length - 1;
+
+    while (low <= high) {
+      int mid = (low + (high - low) / 2).floor();
+      _searchHistory.add({'low': low, 'high': high, 'mid': mid});
+
+      if (_array[mid] == _target) {
+        _foundIndex = mid;
+        return;
+      } else if (_array[mid] < _target) {
+        low = mid + 1;
+      } else {
+        high = mid - 1;
       }
-      _resetVisualizationState();
-    });
+    }
   }
 
-  // Play/Pause toggle
   void _togglePlayPause() {
-    setState(() {
-      _isPlaying = !_isPlaying;
-    });
+    if (_searchCompleted) return;
+
     if (_isPlaying) {
+      setState(() {
+        _isPlaying = false;
+        _isPaused = true;
+      });
+      _visualizationTimer?.cancel();
+    } else {
+      setState(() {
+        _isPlaying = true;
+        _isPaused = false;
+      });
       _runVisualization();
     }
   }
 
-  // Run visualization automatically
-  Future<void> _runVisualization() async {
-    while (_isPlaying && !_bubbleSortCompleted) {
-      await _nextStep();
-      await Future.delayed(const Duration(milliseconds: 800));
-    }
-    if (_bubbleSortCompleted) {
+  void _runVisualization() {
+    if (_searchHistory.isEmpty) {
       setState(() {
         _isPlaying = false;
+        _searchCompleted = true;
       });
+      return;
     }
-  }
 
-  // Execute next step
-  Future<void> _nextStep() async {
-    if (_bubbleSortCompleted) return;
-    setState(() {
-      _currentStep++;
-    });
-    switch (widget.algorithmName) {
-      case 'Bubble Sort':
-        await _bubbleSortStep();
-        break;
-      // Add other algorithms here later
-      default:
-        await _bubbleSortStep();
-    }
-  }
-
-  // Bubble Sort step-by-step execution
-  Future<void> _bubbleSortStep() async {
-    if (_bubbleSortCompleted || _array.length <= 1) return;
-
-    // Set comparison indices only if they are valid
-    if (_bubbleSortJ + 1 < _array.length - _bubbleSortI) {
-      setState(() {
-        _compareIndex1 = _bubbleSortJ;
-        _compareIndex2 = _bubbleSortJ + 1;
-      });
-    } else {
-        // At the end of a pass, reset comparison indices
+    _visualizationTimer = Timer.periodic(const Duration(milliseconds: 1000), (
+      timer,
+    ) {
+      if (!_isPlaying || _currentStep >= _searchHistory.length) {
+        timer.cancel();
         setState(() {
-            _compareIndex1 = -1;
-            _compareIndex2 = -1;
+          _isPlaying = false;
+          _searchCompleted = true;
         });
-    }
-    
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    if (_bubbleSortJ < _array.length - 1 - _bubbleSortI) {
-      // Check if swap is needed
-      if (_array[_bubbleSortJ] > _array[_bubbleSortJ + 1]) {
-        setState(() {
-          _isSwapping = true;
-        });
-
-        await Future.delayed(const Duration(milliseconds: 300));
-
-        // Perform swap
-        setState(() {
-          int temp = _array[_bubbleSortJ];
-          _array[_bubbleSortJ] = _array[_bubbleSortJ + 1];
-          _array[_bubbleSortJ + 1] = temp;
-          _isSwapping = false;
-        });
-
-        await Future.delayed(const Duration(milliseconds: 300));
+        return;
       }
-      // Move to next comparison
+
       setState(() {
-         _bubbleSortJ++;
+        final step = _searchHistory[_currentStep];
+        _low = step['low']!;
+        _high = step['high']!;
+        _mid = step['mid']!;
+        _currentStep++;
       });
-    } else {
-      // End of a pass
-      setState(() {
-        _bubbleSortJ = 0;
-        _bubbleSortI++;
-        if (_bubbleSortI >= _array.length - 1) {
-          _bubbleSortCompleted = true;
-          _compareIndex1 = -1;
-          _compareIndex2 = -1;
-        }
-      });
-    }
+    });
+  }
+
+  Future<void> _nextStep() async {
+    if (_searchCompleted || _currentStep >= _searchHistory.length) return;
+
+    setState(() {
+      final step = _searchHistory[_currentStep];
+      _low = step['low']!;
+      _high = step['high']!;
+      _mid = step['mid']!;
+      _currentStep++;
+
+      if (_currentStep >= _searchHistory.length) {
+        _searchCompleted = true;
+        _isPlaying = false;
+      }
+    });
+  }
+
+  void _reset() {
+    setState(() {
+      if (_originalArray.isNotEmpty) {
+        _array = List.from(_originalArray);
+        _array.sort();
+      }
+      _resetSearchState();
+      // Regenerate search history for the current target
+      if (_array.isNotEmpty) {
+        _performBinarySearch();
+      }
+    });
   }
 
   // Get color for array element based on its state
   Color _getElementColor(int index) {
-    if (_bubbleSortCompleted) {
-      return Colors.green[400]!;
-    } else if (index >= _array.length - _bubbleSortI && _bubbleSortI > 0) {
-      return Colors.green[300]!;
-    } else if (index == _compareIndex1 || index == _compareIndex2) {
-      return _isSwapping ? Colors.red[400]! : Colors.orange[400]!;
+    if (_foundIndex != -1 && index == _foundIndex) {
+      return Colors.green[400]!; // Found - green
+    } else if (index == _mid && _mid != -1) {
+      return Colors.orange[400]!; // Mid point - orange
+    } else if (index >= _low && index <= _high && _low != -1 && _high != -1) {
+      return Colors.blue[300]!; // Search range - light blue
     } else {
-      return Colors.blue[400]!;
+      return Colors.grey[300]!; // Out of range - grey
     }
   }
-  
-  String _getStatusText() {
-    if (_bubbleSortCompleted) {
-      return 'Sorting Complete!';
+
+  String _getStatusMessage() {
+    if (_foundIndex != -1) {
+      return 'Target $_target found at index $_foundIndex!';
+    } else if (_searchCompleted) {
+      return 'Target $_target not found in the array';
+    } else if (_currentStep < _searchHistory.length) {
+      return 'Step ${_currentStep + 1} - Searching range: $_low to $_high, checking mid: $_mid';
+    } else {
+      return 'Ready to search for $_target';
     }
-    if (_compareIndex1 != -1 && _compareIndex2 != -1) {
-      return 'Step $_currentStep - Comparing positions $_compareIndex1 and $_compareIndex2';
-    }
-    return 'Step $_currentStep - Pass completed';
   }
 
   @override
@@ -226,12 +230,9 @@ class _VisualizationPageState extends State<VisualizationPage>
       appBar: AppBar(
         title: Text(
           '${widget.algorithmName} Visualization',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
         ),
-        backgroundColor: Colors.blue[600],
+        backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         elevation: 2,
       ),
@@ -250,10 +251,10 @@ class _VisualizationPageState extends State<VisualizationPage>
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Enter Numbers',
+                        'Search Configuration',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                           color: Colors.grey[800],
@@ -263,19 +264,32 @@ class _VisualizationPageState extends State<VisualizationPage>
                       TextField(
                         controller: _inputController,
                         decoration: InputDecoration(
-                          hintText: 'Enter integers separated by commas (e.g., 5,3,8,1)',
+                          hintText: 'Enter sorted numbers (e.g., 1,3,5,7,9)',
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          prefixIcon: const Icon(Icons.input),
+                          prefixIcon: const Icon(Icons.list),
+                          labelText: 'Sorted Array',
                         ),
-                        keyboardType: TextInputType.text,
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _targetController,
+                        decoration: InputDecoration(
+                          hintText: 'Enter target number to find',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          prefixIcon: const Icon(Icons.search),
+                          labelText: 'Target Number',
+                        ),
+                        keyboardType: TextInputType.number,
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _startVisualization,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[600],
+                          backgroundColor: Colors.deepPurple,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
@@ -283,7 +297,7 @@ class _VisualizationPageState extends State<VisualizationPage>
                           ),
                         ),
                         child: const Text(
-                          'Start Visualization',
+                          'Start Search',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -301,25 +315,62 @@ class _VisualizationPageState extends State<VisualizationPage>
               const SizedBox(height: 16),
               // Status indicator
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
-                  color: _bubbleSortCompleted ? Colors.green[100] : Colors.blue[100],
+                  color: _foundIndex != -1
+                      ? Colors.green[100]
+                      : _searchCompleted
+                      ? Colors.red[100]
+                      : Colors.blue[100],
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: _bubbleSortCompleted ? Colors.green[300]! : Colors.blue[300]!,
+                    color: _foundIndex != -1
+                        ? Colors.green[300]!
+                        : _searchCompleted
+                        ? Colors.red[300]!
+                        : Colors.blue[300]!,
                   ),
                 ),
                 child: Text(
-                  _getStatusText(),
+                  _getStatusMessage(),
                   style: TextStyle(
-                    color: _bubbleSortCompleted ? Colors.green[800] : Colors.blue[800],
+                    color: _foundIndex != -1
+                        ? Colors.green[800]
+                        : _searchCompleted
+                        ? Colors.red[800]
+                        : Colors.blue[800],
                     fontWeight: FontWeight.w600,
+                    fontSize: 16,
                   ),
                   textAlign: TextAlign.center,
                 ),
               ),
               const SizedBox(height: 24),
-              
+
+              // Legend
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildLegendItem(Colors.orange[400]!, 'Mid'),
+                      _buildLegendItem(Colors.blue[300]!, 'Range'),
+                      _buildLegendItem(Colors.green[400]!, 'Found'),
+                      _buildLegendItem(Colors.grey[300]!, 'Excluded'),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
               // Array visualization
               Expanded(
                 child: Center(
@@ -331,13 +382,10 @@ class _VisualizationPageState extends State<VisualizationPage>
                         return Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 4.0),
                           child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
+                            duration: const Duration(milliseconds: 500),
                             curve: Curves.easeInOut,
                             width: 60,
-                            height: _array[index] * 3.5 + 40, // Adjusted height
-                            constraints: const BoxConstraints(
-                              minHeight: 50, // Ensure minimum height for text
-                            ),
+                            height: 80,
                             decoration: BoxDecoration(
                               color: _getElementColor(index),
                               borderRadius: BorderRadius.circular(8),
@@ -348,6 +396,12 @@ class _VisualizationPageState extends State<VisualizationPage>
                                   offset: const Offset(0, 2),
                                 ),
                               ],
+                              border: Border.all(
+                                color: index == _mid && _mid != -1
+                                    ? Colors.orange[700]!
+                                    : Colors.transparent,
+                                width: 2,
+                              ),
                             ),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -355,7 +409,7 @@ class _VisualizationPageState extends State<VisualizationPage>
                                 Text(
                                   '${_array[index]}',
                                   style: const TextStyle(
-                                    color: Colors.white,
+                                    color: Colors.black87,
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -363,8 +417,8 @@ class _VisualizationPageState extends State<VisualizationPage>
                                 const SizedBox(height: 4),
                                 Text(
                                   '$index',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.8),
+                                  style: const TextStyle(
+                                    color: Colors.black54,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -379,7 +433,7 @@ class _VisualizationPageState extends State<VisualizationPage>
               ),
 
               const SizedBox(height: 24),
-              
+
               // Control buttons
               Card(
                 elevation: 3,
@@ -392,11 +446,13 @@ class _VisualizationPageState extends State<VisualizationPage>
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       ElevatedButton.icon(
-                        onPressed: _bubbleSortCompleted ? null : _togglePlayPause,
+                        onPressed: _searchCompleted ? null : _togglePlayPause,
                         icon: Icon(_isPlaying ? Icons.pause : Icons.play_arrow),
                         label: Text(_isPlaying ? 'Pause' : 'Play'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _isPlaying ? Colors.orange[600] : Colors.green[600],
+                          backgroundColor: _isPlaying
+                              ? Colors.orange[600]
+                              : Colors.green[600],
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
@@ -404,7 +460,9 @@ class _VisualizationPageState extends State<VisualizationPage>
                         ),
                       ),
                       ElevatedButton.icon(
-                        onPressed: _bubbleSortCompleted || _isPlaying ? null : _nextStep,
+                        onPressed: _searchCompleted || _isPlaying
+                            ? null
+                            : _nextStep,
                         icon: const Icon(Icons.skip_next),
                         label: const Text('Next'),
                         style: ElevatedButton.styleFrom(
@@ -431,17 +489,17 @@ class _VisualizationPageState extends State<VisualizationPage>
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 16),
-              
-              // New input button
+
+              // New search button
               ElevatedButton(
                 onPressed: () {
                   setState(() {
                     _isVisualizationStarted = false;
                     _array.clear();
                     _originalArray.clear();
-                    _resetVisualizationState();
+                    _resetSearchState();
                   });
                 },
                 style: ElevatedButton.styleFrom(
@@ -452,12 +510,33 @@ class _VisualizationPageState extends State<VisualizationPage>
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('Enter New Numbers'),
+                child: const Text('New Search'),
               ),
             ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLegendItem(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        ),
+      ],
     );
   }
 }

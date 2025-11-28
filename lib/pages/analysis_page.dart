@@ -5,9 +5,9 @@ class AnalysisPage extends StatelessWidget {
   final String algorithmName;
 
   const AnalysisPage({
-    Key? key,
+    super.key,
     required this.algorithmName,
-  }) : super(key: key);
+  });
 
   // Algorithm analysis data
   final Map<String, Map<String, String>> analysisData = const {
@@ -496,7 +496,7 @@ class AnalysisPage extends StatelessWidget {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
+                headingRowColor: WidgetStateProperty.all(Colors.grey[100]),
                 columns: const [
                   DataColumn(label: Text('Algorithm', style: TextStyle(fontWeight: FontWeight.bold))),
                   DataColumn(label: Text('Best', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -507,7 +507,7 @@ class AnalysisPage extends StatelessWidget {
                 rows: analysisData.entries.map((entry) {
                   final isCurrentAlgorithm = entry.key == algorithmName;
                   return DataRow(
-                    color: MaterialStateProperty.all(
+                    color: WidgetStateProperty.all(
                       isCurrentAlgorithm ? Colors.blue[50] : null,
                     ),
                     cells: [

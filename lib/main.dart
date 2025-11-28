@@ -3,9 +3,13 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'pages/algorithm_list.dart';
-import 'pages/visualization_page.dart';
 import 'pages/analysis_page.dart';
-// Working Code till Bubble sort
+import 'pages/binary_search.dart';
+import 'pages/linear_search.dart';
+import 'pages/quick_sort.dart';
+import 'pages/bubble_sort.dart';
+import 'pages/insertion_sort.dart';
+
 void main() {
   runApp(
     ChangeNotifierProvider(
@@ -15,19 +19,19 @@ void main() {
   );
 }
 
-// ThemeProvider class to manage the theme state
 class ThemeProvider with ChangeNotifier {
   ThemeMode _themeMode = ThemeMode.light;
 
   ThemeMode get themeMode => _themeMode;
 
   void toggleTheme() {
-    _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    _themeMode = _themeMode == ThemeMode.light
+        ? ThemeMode.dark
+        : ThemeMode.light;
     notifyListeners();
   }
 }
 
-// Router configuration
 final GoRouter _router = GoRouter(
   initialLocation: '/',
   errorBuilder: (context, state) => const ErrorScreen(),
@@ -42,7 +46,20 @@ final GoRouter _router = GoRouter(
           path: 'visualize/:algorithmName',
           builder: (BuildContext context, GoRouterState state) {
             final String algorithmName = state.pathParameters['algorithmName']!;
-            return VisualizationPage(algorithmName: algorithmName);
+            switch (algorithmName) {
+              case 'binary_search':
+                return const BinarySearchPage(algorithmName: 'Binary Search');
+              case 'linear_search':
+                return const LinearSearchPage(algorithmName: 'Linear Search');
+              case 'quick_sort':
+                return const QuickSortPage(algorithmName: 'Quick Sort');
+              case 'bubble_sort':
+                return const BubbleSortPage(algorithmName: 'Bubble Sort');
+              case 'insertion_sort':
+                return const InsertionSortPage(algorithmName: 'Insertion Sort');
+              default:
+                return const ErrorScreen();
+            }
           },
         ),
         GoRoute(
@@ -62,7 +79,7 @@ class AlgorithmVisualizerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color primarySeedColor = Colors.blue;
+    const Color primarySeedColor = Colors.deepPurple;
 
     final ThemeData lightTheme = ThemeData(
       useMaterial3: true,
@@ -71,7 +88,7 @@ class AlgorithmVisualizerApp extends StatelessWidget {
         brightness: Brightness.light,
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.blue[600],
+        backgroundColor: primarySeedColor,
         foregroundColor: Colors.white,
       ),
     );
